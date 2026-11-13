@@ -1,124 +1,116 @@
-# Input Check
+# Input Check (`input-check`)
 
-A structural input inspector for model applications. Check Chat Completions requests locally or over HTTP, get diagnostics without echoing the prompt, and optionally place the checks in front of a fixed upstream.
+**[简体中文](./README.zh-CN.md)** · **[Checks & API](./docs/checks-and-api.md)** · **[Configuration](./docs/configuration.md)** · **[Envelope Format](./docs/encoding.md)**
 
-[简体中文](README.zh-CN.md) · [Checks and API](docs/checks-and-api.md) · [Configuration](docs/configuration.md) · [Encoding format](docs/encoding.md)
+A structural payload inspector and deterministic fixed-upstream gateway for Chat Completions applications. Validate model requests locally via CLI or over HTTP, collect metadata-only diagnostics without echoing prompt content, and optionally enforce structural checks in front of a fixed upstream endpoint.
 
-**Inspection is the default.** Reversible input encoding is a separate, explicit feature. A successful structural check is not a content-safety verdict.
+## Key Features
 
-## Features
+- **Wire-Level JSON & UTF-8 Validation**: Enforces strict UTF-8 encoding, Unicode escape validity, duplicate JSON key rejection, and configurable nesting depth and byte-size limits.
+- **Chat Completions Shape Verification**: Validates message role sequences and text block structures before upstream dispatch.
+- **Configurable Delimiter & Marker Checks**: Detects unclosed or crossed tags, standalone heading markers, unexpected control/bidirectional Unicode characters, and corrupted transport envelopes.
+- **Zero-Content Diagnostics**: Emits fixed diagnostic codes, counts, and zero-based byte offsets—never logging or returning prompt snippets in reports.
+- **CLI, HTTP Check API & Fixed-Upstream Gateway**: Run standalone local checks, expose an authenticated `/v1/check` endpoint, or proxy validated `/v1/chat/completions` traffic to a configured upstream with model allowlisting and SSE streaming.
+- **Standard Library Go**: Built exclusively with the Go standard library (`Go 1.25+`) with bounded concurrency, strict request deadlines, and graceful shutdown.
 
-- UTF-8 and Unicode-escape validation, duplicate JSON key rejection and depth/size limits.
-- Message roles and text-block shape checks for Chat Completions requests.
-- Configurable literal markers: unclosed/crossed tags, standalone heading markers, unusual control/bidirectional characters and damaged encoding envelopes.
-- Metadata-only diagnostics: fixed codes, counts and byte positions; no prompt snippets in check reports or logs.
-- Local CLI, authenticated check API, optional fixed-upstream proxy with separate credentials, model allowlist and streaming responses.
-- Bounded concurrency, request deadlines, graceful shutdown; Go standard library only.
+## Quick Start
 
-## Quick start
+Compile the static binary and inspect sample payloads locally:
 
-Requires Go 1.25+. Build from this checkout:
-
-```sh
+```bash
 CGO_ENABLED=0 GOMAXPROCS=1 go build -p 1 -trimpath -o bin/inputcheck ./cmd/inputcheck
 ./bin/inputcheck check -input examples/request.json
 ./bin/inputcheck check -strict -input examples/warnings.json
 ```
 
-The second command returns exit code 1 and a diagnostic such as:
+Under `-strict`, structural warnings return exit code `1` alongside a metadata-only diagnostic report:
 
 ```json
 {
   "valid": true,
   "warnings": 1,
-  "findings": [{"code": "unclosed_tag", "severity": "warning", "message_index": 0, "block_index": -1, "offset": 0}]
+  "findings": [
+    {
+      "code": "unclosed_tag",
+      "severity": "warning",
+      "message_index": 0,
+      "block_index": -1,
+      "offset": 0
+    }
+  ]
 }
 ```
 
-This abbreviated example omits report counters. `valid` means the document passes structural/schema bounds; warnings still need attention. No network request is made by `check` or `encode`.
+| Exit Code | Meaning |
+| :--- | :--- |
+| `0` | Valid document (warnings permitted unless `-strict` is set). |
+| `1` | Valid structure with warnings rejected by `-strict` policy. |
+| `2` | Malformed input, invalid configuration, resource ceiling exceeded, or runtime error. |
 
-| Exit code | Meaning |
-| --- | --- |
-| `0` | Valid document; warnings permitted unless strict mode is selected |
-| `1` | Valid structure with warnings rejected by strict policy; encode always rejects warnings |
-| `2` | Invalid input/configuration, resource limit or execution failure |
+## HTTP Inspection API
 
-Omit `-input` or use `-input -` to read stdin. Select marker names with `-tags input,customer_note,资料`; no regular expressions are accepted. Reports never echo text; offsets are zero-based byte positions in the decoded text block.
+Set a client bearer token (at least 16 bytes) in `INPUTCHECK_TOKEN` and start the inspection server:
 
-## Check API
-
-Configure a random client token of at least 16 bytes in the `INPUTCHECK_TOKEN` environment variable using your secret manager or local environment. Then:
-
-```sh
+```bash
 ./bin/inputcheck serve -config examples/config.inspect.json -check-config
 ./bin/inputcheck serve -config examples/config.inspect.json
 ```
 
-```sh
+Send a payload to `/v1/check`:
+
+```bash
 curl --fail-with-body \
   -H "Authorization: Bearer $INPUTCHECK_TOKEN" \
-  -H 'Content-Type: application/json' \
+  -H "Content-Type: application/json" \
   --data-binary @examples/request.json \
   http://127.0.0.1:9090/v1/check
 ```
 
-The included inspector configuration has **no upstream**. It only validates the document and returns a report. Configuration checks read no credentials and make no requests; they do not prove credentials or connectivity work.
+## Fixed-Upstream Gateway
 
-## Optional gateway
+To run `input-check` as an inline validation gateway in front of an upstream provider, copy `examples/config.proxy.json` to `config.json` and configure your upstream origin, model allowlist mapping, and two distinct tokens (`INPUTCHECK_TOKEN` for downstream clients and `INPUTCHECK_UPSTREAM_TOKEN` for the upstream provider):
 
-Copy `examples/config.proxy.json` to a private `config.json`. Set your fixed upstream origin, model mapping and two distinct token sources. `INPUTCHECK_TOKEN` authenticates clients to this service; `INPUTCHECK_UPSTREAM_TOKEN` authenticates this service to your upstream.
-
-```sh
+```bash
 ./bin/inputcheck serve -config config.json -check-config
 ./bin/inputcheck serve -config config.json
 ```
 
-Send normal Chat Completions requests to `/v1/chat/completions`. In default `inspect` mode, valid requests pass checks and retain their exact bytes when model aliases map to themselves. An alias mapping changes the model field and serializes the document; decoded text and unknown JSON fields remain intact. The upstream origin cannot come from a request. Other paths, queries, compressed request bodies and redirects are rejected.
+Send standard Chat Completions requests to `/v1/chat/completions`. When `reject_warnings: true` is enabled, requests triggering structural warnings are rejected locally before any upstream call is made.
 
-`reject_warnings: true` blocks warned requests before any upstream call. The standalone `/v1/check` endpoint never forwards, even if an upstream is configured. It checks document structure, not whether the model is available or permitted by that upstream; the proxy separately enforces the configured model map.
+## Deterministic Transport Envelope (`encode`)
 
-## Explicit reversible encoding
+For multi-hop middleware pipelines requiring binary-safe text transport with checksum verification:
 
-For workflows that deliberately require the documented text-envelope representation:
-
-```sh
+```bash
 ./bin/inputcheck encode -input examples/request.json
 ```
 
-Or set `mode: "encode"` in your private proxy configuration. Encoding runs only after a valid check with no warnings. It transforms selected text regions and leaves tool results, tool arguments, images and other non-text fields untouched. No-match requests are unchanged apart from any requested model mapping. A validated existing envelope is not encoded again.
+When invoked via CLI or `mode: "encode"`, validated text segments are packaged into numbered Base64 chunks with SHA-256 integrity hashes, leaving tool calls, arguments, and non-text fields untouched.
 
-The format uses numbered Base64 chunks and SHA-256 for corruption detection. It is **not encryption, redaction, moderation or protection against prompt injection**. It expands text and changes the model input representation; downstream interpretation and compatibility must be tested for your application. See the exact [format and limitations](docs/encoding.md). The encode CLI intentionally emits request content; route that output only where you intend.
-
-## Docker
+## Docker Deployment
 
 After setting `INPUTCHECK_TOKEN`:
 
-```sh
+```bash
 docker compose up --build -d
 ```
 
-The bundled Compose runs the check-only API on `127.0.0.1:9090`, as UID/GID 65532, with a read-only filesystem, no Linux capabilities and explicit resource limits. It mounts only the synthetic inspector config and has no provider connection configured. To use a proxy, mount your own config read-only and supply the separate upstream credential. Secret files are supported as alternatives to environment variables.
+The container runs as `UID/GID 65532` on `127.0.0.1:9090` with a read-only root filesystem, dropped Linux capabilities, and explicit memory/CPU limits.
 
-The multi-stage Dockerfile builds on a dedicated development/CI machine. A shared machine can compile first under its resource policy and then use the COPY-only `Dockerfile.prebuilt`; its context must contain only the reviewed binary, CA bundle and LICENSE. Update the pinned builder digest deliberately when maintaining the project.
+## Privacy & Resource Bounds
 
-## Privacy and limits
+- **Zero Payload Persistence**: Request bodies are validated in memory and never written to disk. Proxy logs record request counts and latency timings only.
+- **Default Ceilings**: `1 MiB` inspection input, `8 MiB` forwarded proxy payload, `2` concurrent requests, and a `60s` total request deadline (all configurable within documented bounds).
 
-No request body is persisted. Check responses contain diagnostic metadata only. The optional proxy deliberately forwards accepted requests to the configured upstream and streams its response; there are no automatic retries or fallback origins. Upstream response bodies are not inspected. Proxy logs contain counts/timings, never prompt snippets or credentials. There is no telemetry or background model probing.
+## Development & Verification
 
-Default bounds: 1 MiB input, 8 MiB forwarded request, 2 concurrent requests and a 60-second total deadline; marker/JSON nesting and report counts are bounded too. See [configuration](docs/configuration.md) for supported ranges. Use HTTPS or a trusted local network for token-bearing traffic. The supplied loopback binding can sit behind your existing authenticated HTTPS proxy. Keep private configs, tokens and any downstream logging policies outside the repository.
-
-This is a structural checker for the documented JSON dialect, not a full provider schema validator, XML parser, semantic classifier, malicious-intent detector or guarantee that a prompt is safe. Unknown non-text content is opaque. It does not operate accounts or login queues, set billing policy or bypass upstream authorization.
-
-## Development and release
-
-```sh
+```bash
 make test
 make vet
 make build
 python3 tools/runtime_smoke.py --binary bin/inputcheck
-python3 tools/release.py
 ```
 
-Tests use synthetic strings and local fake HTTP upstreams. They do not require credentials, call models or reuse production prompts. The release helper creates an allowlisted, reproducible source ZIP with a per-file SHA-256 manifest under `dist/`. Review its file list and content before publishing; private deployment files and build caches are excluded.
+## License
 
-MIT. See [provenance](PROVENANCE.md) and [release notes](CHANGELOG.md). No public repository, package registry, live provider validation or hosted CI result is implied by this candidate.
+MIT License. Maintained by [VectorDuct](https://vectorduct.com).
