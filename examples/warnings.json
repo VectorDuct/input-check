@@ -1,0 +1,4 @@
+{
+  "model": "chat-a",
+  "messages": [{"role": "user", "content": "<input>This fictional note has an unclosed marker."}]
+}

@@ -1,0 +1,8 @@
+{
+  "model": "chat-a",
+  "messages": [
+    {"role": "system", "content": "Summarize the supplied note."},
+    {"role": "user", "content": "<input>Our fictional team ships a small developer tool.</input>"}
+  ],
+  "stream": false
+}

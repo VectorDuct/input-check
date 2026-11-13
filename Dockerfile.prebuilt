@@ -1,0 +1,12 @@
+# Assemble only from a reviewed binary, CA bundle and license.
+# The build context must contain inputcheck, ca-certificates.crt and LICENSE.
+FROM scratch
+COPY --chown=65532:65532 inputcheck /inputcheck
+COPY ca-certificates.crt /etc/ssl/certs/ca-certificates.crt
+COPY LICENSE /LICENSE
+USER 65532:65532
+ENV GOMEMLIMIT=192MiB GOMAXPROCS=1
+EXPOSE 9090
+HEALTHCHECK --interval=30s --timeout=5s --start-period=5s CMD ["/inputcheck", "healthcheck", "-config", "/etc/inputcheck/config.json"]
+ENTRYPOINT ["/inputcheck"]
+CMD ["serve", "-config", "/etc/inputcheck/config.json"]
