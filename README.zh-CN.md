@@ -2,6 +2,8 @@
 
 **[English](./README.md)** · **[检查项与 API](./docs/checks-and-api.md)** · **[配置说明](./docs/configuration.md)** · **[信封编码格式](./docs/encoding.md)**
 
+> **VectorDuct 核心原语：Wire-Level Guard（线级边界守卫）** ([vectorduct.com](https://vectorduct.com/#stack))
+
 面向大模型应用的请求结构校验器与固定上游网关。支持通过本地命令行或 HTTP 接口校验 Chat Completions 请求结构，在不回显任何提示词正文的前提下输出元数据诊断报告，并可作为前置校验网关部署于固定上游服务之前。
 
 ## 核心特性

@@ -2,6 +2,8 @@
 
 **[简体中文](./README.zh-CN.md)** · **[Checks & API](./docs/checks-and-api.md)** · **[Configuration](./docs/configuration.md)** · **[Envelope Format](./docs/encoding.md)**
 
+> **VectorDuct Primitive: Wire-Level Guard** ([vectorduct.com](https://vectorduct.com/#stack))
+
 A structural payload inspector and deterministic fixed-upstream gateway for Chat Completions applications. Validate model requests locally via CLI or over HTTP, collect metadata-only diagnostics without echoing prompt content, and optionally enforce structural checks in front of a fixed upstream endpoint.
 
 ## Key Features
