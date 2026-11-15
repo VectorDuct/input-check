@@ -22,8 +22,11 @@ Compile the static binary and inspect sample payloads locally:
 ```bash
 CGO_ENABLED=0 GOMAXPROCS=1 go build -p 1 -trimpath -o bin/inputcheck ./cmd/inputcheck
 ./bin/inputcheck check -input examples/request.json
+./bin/inputcheck check -strict -input examples/request.tool-call.json
 ./bin/inputcheck check -strict -input examples/warnings.json
 ```
+
+The synthetic [tool-call fixture](./examples/request.tool-call.json) includes an assistant function call and its matching tool result. Inspection checks structure without executing tools or validating their business semantics.
 
 Under `-strict`, structural warnings return exit code `1` alongside a metadata-only diagnostic report:
 

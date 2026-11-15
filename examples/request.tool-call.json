@@ -1,0 +1,58 @@
+{
+  "model": "chat-a",
+  "messages": [
+    {
+      "role": "system",
+      "content": "Use the supplied read-only tool to look up a fictional project's status."
+    },
+    {
+      "role": "user",
+      "content": "What is the release status of the fictional demo project?"
+    },
+    {
+      "role": "assistant",
+      "content": null,
+      "tool_calls": [
+        {
+          "id": "call_demo_status_1",
+          "type": "function",
+          "function": {
+            "name": "get_project_status",
+            "arguments": "{\"project_id\":\"demo-project\"}"
+          }
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "tool_call_id": "call_demo_status_1",
+      "content": "{\"project_id\":\"demo-project\",\"status\":\"ready_for_review\"}"
+    },
+    {
+      "role": "assistant",
+      "content": "The fictional demo project is ready for review."
+    },
+    {
+      "role": "user",
+      "content": "Summarize that status in one sentence without making changes."
+    }
+  ],
+  "tools": [
+    {
+      "type": "function",
+      "function": {
+        "name": "get_project_status",
+        "description": "Read the release status of a fictional project; does not modify data.",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "project_id": {"type": "string"}
+          },
+          "required": ["project_id"],
+          "additionalProperties": false
+        }
+      }
+    }
+  ],
+  "stream": false
+}

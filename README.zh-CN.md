@@ -22,8 +22,11 @@
 ```bash
 CGO_ENABLED=0 GOMAXPROCS=1 go build -p 1 -trimpath -o bin/inputcheck ./cmd/inputcheck
 ./bin/inputcheck check -input examples/request.json
+./bin/inputcheck check -strict -input examples/request.tool-call.json
 ./bin/inputcheck check -strict -input examples/warnings.json
 ```
+
+合成的[工具调用示例](./examples/request.tool-call.json)包含 assistant 函数调用及与之匹配的工具结果。检查器仅校验结构，不执行工具或验证其业务语义。
 
 在 `-strict`（严格模式）下，包含结构告警的请求会返回退出码 `1` 及如下纯元数据诊断结果：
 
