@@ -6,7 +6,7 @@ import zipfile
 
 ROOT = Path(__file__).resolve().parents[1]
 FILES = ['README.md', 'README.zh-CN.md', 'LICENSE', 'PROVENANCE.md', 'CONTRIBUTING.md',
-         'CHANGELOG.md', 'go.mod', 'Makefile', 'Dockerfile', 'Dockerfile.prebuilt',
+         'CHANGELOG.md', 'SECURITY.md', '.editorconfig', 'go.mod', 'Makefile', 'Dockerfile', 'Dockerfile.prebuilt',
          'compose.yaml', '.gitignore', '.dockerignore']
 PATTERNS = ['cmd/inputcheck/*.go', 'internal/check/*.go', 'internal/codec/*.go',
             'internal/gateway/*.go', 'examples/*.json', 'docs/*.md',
@@ -21,10 +21,10 @@ def main():
     for pattern in PATTERNS:
         files.update(ROOT.glob(pattern))
     payloads = {}
-    for path in sorted(files):
+    for path in sorted(files, key=lambda item: item.relative_to(ROOT).as_posix()):
         if not path.is_file() or path.is_symlink() or not path.resolve().is_relative_to(ROOT):
             raise ValueError('Missing/unsafe file in publication allowlist')
-        payloads[str(path.relative_to(ROOT))] = path.read_bytes()
+        payloads[path.relative_to(ROOT).as_posix()] = path.read_bytes()
     manifest = ''.join(hashlib.sha256(data).hexdigest() + '  ' + name + '\n' for name, data in payloads.items())
     payloads['MANIFEST.sha256'] = manifest.encode()
     args.output.parent.mkdir(parents=True, exist_ok=True)
