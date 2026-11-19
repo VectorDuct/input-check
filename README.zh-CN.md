@@ -6,6 +6,12 @@
 
 面向大模型应用的请求结构校验器与固定上游网关。支持通过本地命令行或 HTTP 接口校验 Chat Completions 请求结构，在不回显任何提示词正文的前提下输出元数据诊断报告，并可作为前置校验网关部署于固定上游服务之前。
 
+## 正式发布
+
+[v0.1.0 — 首个公开版本](https://github.com/VectorDuct/input-check/releases/tag/v0.1.0)。下载源码 ZIP 和 `SHA256SUMS`，解压后按下文命令使用 Go 1.25+ 构建；该 ZIP 不包含编译好的可执行文件。
+
+安装前请按 `SHA256SUMS` 校验下载包（Linux：`sha256sum -c SHA256SUMS`）。源码 ZIP 内另附逐文件校验清单 `MANIFEST.sha256`。
+
 ## 核心特性
 
 - **底层编码与 JSON 严格校验**：强制执行 UTF-8 有效性、Unicode 转义合规性、重复 JSON 键拒绝，以及可配置的嵌套深度与字节体积上限。

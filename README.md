@@ -6,6 +6,12 @@
 
 A structural payload inspector and deterministic fixed-upstream gateway for Chat Completions applications. Validate model requests locally via CLI or over HTTP, collect metadata-only diagnostics without echoing prompt content, and optionally enforce structural checks in front of a fixed upstream endpoint.
 
+## Releases
+
+[v0.1.0 — Initial Public Release](https://github.com/VectorDuct/input-check/releases/tag/v0.1.0). Download the source ZIP and `SHA256SUMS`; extract it and build with Go 1.25+ using the commands below. This ZIP is not a compiled executable.
+
+Verify downloaded assets against `SHA256SUMS` before installation (Linux: `sha256sum -c SHA256SUMS`). Source ZIPs also include a per-file `MANIFEST.sha256`.
+
 ## Key Features
 
 - **Wire-Level JSON & UTF-8 Validation**: Enforces strict UTF-8 encoding, Unicode escape validity, duplicate JSON key rejection, and configurable nesting depth and byte-size limits.

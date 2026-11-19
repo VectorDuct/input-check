@@ -15,6 +15,8 @@ jobs:
       - run: GOMAXPROCS=1 go vet -p 1 ./...
       - run: CGO_ENABLED=0 GOMAXPROCS=1 go build -p 1 -trimpath -o bin/inputcheck ./cmd/inputcheck
       - run: bin/inputcheck check -strict -input examples/request.json
+      - name: Verify multi-turn tool-call example
+        run: bin/inputcheck check -strict -input examples/request.tool-call.json
       - run: bin/inputcheck serve -config examples/config.inspect.json -check-config
       - run: python3 tools/release.py
       - uses: actions/upload-artifact@v4
